@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using UnityEngine.UI;
 public class SpaceShip : MonoBehaviour {
 	public float flipSpeed = 1;
 	public float overFlipSpeed = 2;
@@ -25,8 +25,22 @@ public class SpaceShip : MonoBehaviour {
 	float zVel = 0;
 
 	public int playerId = 1;
-
+	public RectTransform lockCircle;
+	public RectTransform lockCircle2;
+	public RectTransform lockCircle3;
+	public Canvas can;
 	public bool mustShoot = false;
+
+	public GameObject otherPlayer;
+	public float minLockDistance = 0.5f;
+	public float detectAngle = 45.0f;
+	public float detectDistance = 5.0f;
+
+	public GameObject rocketPrefab;
+
+	public Text rocketText;
+
+	public int rockets = 0;
 	// Use this for initialization
 	void Start () {
 		if (GameObject.Find ("SerialController")) {
@@ -39,6 +53,30 @@ public class SpaceShip : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+		rocketText.text = "Rockets: " + rockets.ToString ();
+		if (lockCircle ) {
+			
+			if (Vector3.Angle(transform.forward, otherPlayer.transform.position - transform.position) < detectAngle && Vector3.Distance(transform.position, otherPlayer.transform.position) <= detectDistance && rockets > 0) {
+				lockCircle.gameObject.SetActive (true);
+				lockCircle2.gameObject.SetActive(true);
+				if (lockCircle2.GetComponent<innerLockCircle> ().isLocked ()) {
+					lockCircle3.gameObject.SetActive(true);
+				}
+				Vector2 ViewportPosition = GetComponent<PlayerManager> ().cam.GetComponent<Camera> ().WorldToScreenPoint (otherPlayer.transform.position);
+				float width = GetComponent<PlayerManager> ().cam.GetComponent<Camera> ().pixelWidth / 2.0f;
+				if (playerId == 2) {
+					width *= 3;
+				}
+
+				lockCircle.anchoredPosition = ViewportPosition - new Vector2 (width, GetComponent<PlayerManager> ().cam.GetComponent<Camera> ().pixelHeight / 2.0f);
+
+			} else {
+				lockCircle.gameObject.SetActive (false);
+				lockCircle2.gameObject.SetActive(false);
+				lockCircle3.gameObject.SetActive (false);
+			}
+		}
+
 		KeyCode shootkey = KeyCode.None;
 		if (playerId == 1) {
 			shootkey = KeyCode.Space;
@@ -88,11 +126,23 @@ public class SpaceShip : MonoBehaviour {
 		}
 
 
+		KeyCode rocketKey = KeyCode.None;
+		if (playerId == 1) {
+			rocketKey = KeyCode.LeftAlt;
+		}else if(playerId == 2){
+			rocketKey = KeyCode.RightAlt;
+		}
+
+		if (Input.GetKeyDown (rocketKey)) {
+			fire ();
+		}
 
 		this.transform.eulerAngles = new Vector3 (this.transform.eulerAngles.x, yRot, zRot);
 
 		currotationSpeed = lastYrot - yRot;
 		lastYrot = yRot;
+
+
 	}
 
 	public void FixedUpdate(){
@@ -154,7 +204,7 @@ public class SpaceShip : MonoBehaviour {
 	}
 
 	IEnumerator waitforshoot(){
-		yield return new WaitForSeconds (0.5f);
+		yield return new WaitForSeconds (0.1f);
 		canshoot = true;
 	}
 
@@ -162,7 +212,7 @@ public class SpaceShip : MonoBehaviour {
 		if (!canshoot)
 			return;
 
-		Instantiate (bullet, this.transform.position + this.transform.forward * 5, this.transform.rotation);
+		Instantiate (bullet, this.transform.position + this.transform.forward * 8, this.transform.rotation);
 		canshoot = false;
 		StartCoroutine (waitforshoot ());
 	}
@@ -173,5 +223,36 @@ public class SpaceShip : MonoBehaviour {
 		Vector3 s = (r * Vector3.forward);
 
 		this.GetComponent<Rigidbody>().AddForce(s*magnitude*speed);
+	}
+
+	public void fire(){
+		if (lockCircle2.GetComponent<innerLockCircle> ().isLocked ()) {
+			if (Vector2.Distance (lockCircle3.anchoredPosition, Vector2.zero) <= minLockDistance) {
+				lockCircle3.GetComponent<innerLockCircle> ().lockPos ();
+				GameObject r = Instantiate (rocketPrefab, transform.position + transform.forward * 15, Quaternion.identity) as GameObject;
+				r.GetComponent<rocket> ().target = otherPlayer.transform;
+				lockCircle2.GetComponent<innerLockCircle> ().reset ();
+				lockCircle3.GetComponent<innerLockCircle> ().reset ();
+				lockCircle2.gameObject.SetActive (false);
+				lockCircle3.gameObject.SetActive (false);
+				rockets--;
+
+			} else {
+				lockCircle2.GetComponent<innerLockCircle> ().reset ();
+				lockCircle3.GetComponent<innerLockCircle> ().reset ();
+				lockCircle3.gameObject.SetActive (false);
+			}
+		} else {
+			
+			if (Vector2.Distance (lockCircle2.anchoredPosition, Vector2.zero) <= minLockDistance) {
+				lockCircle2.GetComponent<innerLockCircle> ().lockPos ();
+			} else {
+				lockCircle2.GetComponent<innerLockCircle> ().reset ();
+			}
+		}
+	}
+
+	public void pickedUpRocket(){
+		rockets++;
 	}
 }

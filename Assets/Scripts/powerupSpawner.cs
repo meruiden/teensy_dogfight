@@ -15,10 +15,9 @@ public class powerupSpawner : MonoBehaviour {
 	void Update () {
         spawnCounter += Time.deltaTime;
 
-
         if (spawnCounter > 2)
         {
-            Instantiate(powerUps[Random.Range(0,3)], new Vector3(Random.Range(0, 450), 20, Random.Range(0, 450)), spawner.transform.rotation);
+			Instantiate(powerUps[Random.Range(0,powerUps.Length)], new Vector3(Random.Range(0, 450), 20, Random.Range(0, 450)), spawner.transform.rotation);
             spawnCounter = 0;
         }
 
